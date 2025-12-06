@@ -1,0 +1,196 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+
+function getDashboardPath(role: string | undefined | null): string {
+  switch (role) {
+    case "superadmin":
+      return "/superadmin";
+    case "dosen":
+      return "/teacher";
+    case "mahasiswa":
+      return "/student";
+    default:
+      return "/";
+  }
+}
+
+const LoginPage: React.FC = () => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user, login, initialized, loading } = useAuth();
+
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const redirectMessage = searchParams.get("message");
+
+  // Kalau sudah login, jangan bisa lihat halaman login lagi → redirect ke dashboard sesuai role
+  useEffect(() => {
+    if (!initialized) return;
+
+    if (user) {
+      const target = getDashboardPath(user.role);
+      router.replace(target);
+    }
+  }, [user, initialized, router]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError(null);
+
+    if (!username || !password) {
+      setFormError("Username dan password wajib diisi.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await login(username, password);
+
+      const target = getDashboardPath(user?.role);
+      router.push(target);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setFormError(error.message || "Gagal login. Silakan coba lagi.");
+      } else {
+        setFormError("Terjadi kesalahan tidak diketahui saat login.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const isGlobalLoading = !initialized || loading;
+  const isBusy = isSubmitting || isGlobalLoading;
+
+  return (
+    <div className="min-h-screen bg-white text-slate-900 flex items-center justify-center px-4">
+      <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-[1.2fr,1fr] gap-8 md:gap-10 items-center">
+        {/* Panel Brand / Visual */}
+        <div className="hidden md:flex flex-col gap-4">
+          <div className="inline-flex items-center gap-3 rounded-full bg-red-50 border border-red-100 px-4 py-2 w-fit shadow-sm">
+            <span className="h-8 w-8 flex items-center justify-center rounded-full bg-red-700 text-white text-sm font-semibold">
+              BS
+            </span>
+            <div className="text-xs uppercase tracking-[0.2em] text-red-700 font-semibold">
+              Bima Sakapenta
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h1 className="text-3xl md:text-4xl font-semibold text-red-800 leading-snug">
+              LMS Bima Sakapenta
+            </h1>
+            <p className="text-sm text-slate-600 max-w-md">
+              Platform pembelajaran modern untuk kampusmu.
+            </p>
+          </div>
+
+          <div className="mt-4 h-px w-32 bg-gradient-to-r from-red-600 via-yellow-400 to-transparent rounded-full" />
+        </div>
+
+        {/* Card Login */}
+        <div className="relative">
+          <div className="absolute -inset-0.5 bg-gradient-to-br from-red-600 via-red-500 to-yellow-400 opacity-60 blur-2xl rounded-3xl pointer-events-none" />
+          <div className="relative bg-white rounded-3xl border border-red-100 shadow-xl px-6 py-7 md:px-8 md:py-9 space-y-6">
+            {/* Header mobile brand */}
+            <div className="md:hidden flex flex-col items-center gap-2">
+              <div className="h-10 w-10 flex items-center justify-center rounded-2xl bg-red-700 text-white text-sm font-semibold shadow-md">
+                BS
+              </div>
+              <div className="text-center">
+                <h2 className="text-lg font-semibold text-red-800">
+                  LMS Bima Sakapenta
+                </h2>
+              </div>
+            </div>
+
+            {/* Header desktop */}
+            <div className="hidden md:block space-y-1">
+              <p className="text-xs font-semibold tracking-[0.25em] text-red-600 uppercase">
+                Login
+              </p>
+              <h2 className="text-xl font-semibold text-slate-900">
+                Masuk ke akun Anda
+              </h2>
+            </div>
+
+            {redirectMessage && (
+              <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-2xl px-3 py-2">
+                {redirectMessage}
+              </div>
+            )}
+
+            {formError && (
+              <div className="text-xs text-red-800 bg-red-50 border border-red-200 rounded-2xl px-3 py-2">
+                {formError}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="username"
+                  className="block text-sm font-medium text-slate-800"
+                >
+                  Username / NIM
+                </label>
+                <input
+                  id="username"
+                  type="text"
+                  autoComplete="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  disabled={isBusy}
+                  className="block w-full rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-red-600 disabled:bg-slate-100"
+                  placeholder="Masukkan username"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium text-slate-800"
+                >
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isBusy}
+                  className="block w-full rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-red-600 disabled:bg-slate-100"
+                  placeholder="Masukkan password"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isBusy}
+                className="w-full inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-medium bg-red-700 text-white hover:bg-red-800 disabled:opacity-70 disabled:cursor-not-allowed shadow-md shadow-red-200 transition-colors"
+              >
+                {isBusy ? "Memproses..." : "Login"}
+              </button>
+            </form>
+
+            {isGlobalLoading && (
+              <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                <span className="h-2 w-2 rounded-full bg-yellow-400 animate-pulse" />
+                <span>Menginisialisasi sesi…</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default LoginPage;
