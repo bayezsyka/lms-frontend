@@ -124,12 +124,10 @@ const TeacherAssignmentDetailPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [assignment, setAssignment] = useState<AssignmentDetail | null>(
-    null
+  const [assignment, setAssignment] = useState<AssignmentDetail | null>(null);
+  const [submissions, setSubmissions] = useState<AssignmentSubmissionItem[]>(
+    []
   );
-  const [submissions, setSubmissions] = useState<
-    AssignmentSubmissionItem[]
-  >([]);
 
   const [edits, setEdits] = useState<SubmissionEditMap>({});
   const [submittingMap, setSubmittingMap] =

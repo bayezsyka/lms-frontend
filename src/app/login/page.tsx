@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
@@ -17,7 +17,7 @@ function getDashboardPath(role: string | undefined | null): string {
   }
 }
 
-const LoginPage: React.FC = () => {
+const LoginContent: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, login, initialized, loading } = useAuth();
@@ -190,6 +190,14 @@ const LoginPage: React.FC = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+const LoginPage: React.FC = () => {
+  return (
+    <Suspense fallback={null}>
+      <LoginContent />
+    </Suspense>
   );
 };
 

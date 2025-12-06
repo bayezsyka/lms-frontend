@@ -153,7 +153,6 @@ const TeacherQuizDetailPage: React.FC = () => {
         if (!isActive) return;
 
         setQuiz(data.quiz);
-        // ⬇️ Penting: kalau attempts null/undefined → jadikan array kosong
         const safeAttempts = Array.isArray(data.attempts)
           ? data.attempts
           : [];
@@ -399,7 +398,7 @@ const TeacherQuizDetailPage: React.FC = () => {
                       <td className="px-3 py-2 align-top text-[11px] text-slate-600">
                         {formatDateTime(attempt.submitted_at)}
                       </td>
-                      <td className="px-3 py-2 align-top text-[11px] text-slate-900">
+                      <td className="px-3 py-2 align-top text-slate-900">
                         {hasScore ? (
                           <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
                             {attempt.score}
