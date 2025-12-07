@@ -336,6 +336,69 @@ function formatQuizStatus(status: QuizTimeStatus | undefined): string {
   return "Status tidak diketahui";
 }
 
+// ---------------------------
+// Local Confirm Dialog
+// ---------------------------
+
+interface ConfirmConfig {
+  title: string;
+  description: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  onConfirm: () => void;
+}
+
+interface ConfirmDialogProps {
+  open: boolean;
+  title: string;
+  description: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
+  open,
+  title,
+  description,
+  confirmLabel = "Ya",
+  cancelLabel = "Batal",
+  onConfirm,
+  onCancel,
+}) => {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-lg shadow-black/10">
+        <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
+        <p className="mt-1 text-xs text-slate-600 whitespace-pre-wrap">
+          {description}
+        </p>
+        <div className="mt-4 flex items-center justify-end gap-2">
+          {cancelLabel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] text-slate-700 hover:bg-slate-50"
+            >
+              {cancelLabel}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="inline-flex items-center rounded-full bg-red-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm hover:bg-red-700"
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const CourseDetailPage: React.FC = () => {
   const params = useParams();
   const router = useRouter();
@@ -411,6 +474,11 @@ const CourseDetailPage: React.FC = () => {
   );
   const [gradesLoading, setGradesLoading] = useState<boolean>(true);
   const [gradesError, setGradesError] = useState<string | null>(null);
+
+  // Global confirm dialog state
+  const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig | null>(
+    null
+  );
 
   useEffect(() => {
     if (!courseId) return;
@@ -683,12 +751,7 @@ const CourseDetailPage: React.FC = () => {
     setSectionModalOpen(true);
   };
 
-  const handleDeleteSection = async (section: SectionItem) => {
-    const confirmDelete = window.confirm(
-      `Hapus section "${section.title}"? Semua materi/tugas/quiz di dalamnya juga akan ikut terhapus.`
-    );
-    if (!confirmDelete) return;
-
+  const performDeleteSection = async (section: SectionItem) => {
     try {
       await apiDelete(`/api/sections/${section.id}`);
       setSections((prev) => prev.filter((s) => s.id !== section.id));
@@ -728,8 +791,20 @@ const CourseDetailPage: React.FC = () => {
         error,
         "Gagal menghapus section. Silakan coba lagi."
       );
-      window.alert(message);
+      setSectionsError(message);
     }
+  };
+
+  const handleDeleteSection = (section: SectionItem) => {
+    setConfirmConfig({
+      title: "Hapus section",
+      description: `Hapus section "${section.title}"? Semua materi/tugas/quiz di dalamnya juga akan ikut terhapus.`,
+      confirmLabel: "Ya, hapus",
+      cancelLabel: "Batal",
+      onConfirm: () => {
+        void performDeleteSection(section);
+      },
+    });
   };
 
   // ---------------------------
@@ -852,15 +927,10 @@ const CourseDetailPage: React.FC = () => {
     }
   };
 
-  const handleDeleteMaterial = async (
+  const performDeleteMaterial = async (
     sectionId: number,
     material: MaterialItem
   ) => {
-    const confirmDelete = window.confirm(
-      `Hapus materi "${material.title}" dari section ini?`
-    );
-    if (!confirmDelete) return;
-
     try {
       await apiDelete(`/api/materials/${material.id}`);
       await loadMaterialsForSection(sectionId);
@@ -869,8 +939,20 @@ const CourseDetailPage: React.FC = () => {
         error,
         "Gagal menghapus materi. Silakan coba lagi."
       );
-      window.alert(message);
+      setSectionContentErrorMessage(sectionId, message);
     }
+  };
+
+  const handleDeleteMaterial = (sectionId: number, material: MaterialItem) => {
+    setConfirmConfig({
+      title: "Hapus materi",
+      description: `Hapus materi "${material.title}" dari section ini?`,
+      confirmLabel: "Ya, hapus",
+      cancelLabel: "Batal",
+      onConfirm: () => {
+        void performDeleteMaterial(sectionId, material);
+      },
+    });
   };
 
   // ---------------------------
@@ -1009,15 +1091,10 @@ const CourseDetailPage: React.FC = () => {
     }
   };
 
-  const handleDeleteAssignment = async (
+  const performDeleteAssignment = async (
     sectionId: number,
     assignment: AssignmentItem
   ) => {
-    const confirmDelete = window.confirm(
-      `Hapus tugas "${assignment.title}" dari section ini?`
-    );
-    if (!confirmDelete) return;
-
     try {
       await apiDelete(`/api/assignments/${assignment.id}`);
       await loadAssignmentsForSection(sectionId);
@@ -1026,8 +1103,23 @@ const CourseDetailPage: React.FC = () => {
         error,
         "Gagal menghapus tugas. Silakan coba lagi."
       );
-      window.alert(message);
+      setSectionContentErrorMessage(sectionId, message);
     }
+  };
+
+  const handleDeleteAssignment = (
+    sectionId: number,
+    assignment: AssignmentItem
+  ) => {
+    setConfirmConfig({
+      title: "Hapus tugas",
+      description: `Hapus tugas "${assignment.title}" dari section ini?`,
+      confirmLabel: "Ya, hapus",
+      cancelLabel: "Batal",
+      onConfirm: () => {
+        void performDeleteAssignment(sectionId, assignment);
+      },
+    });
   };
 
   // ---------------------------
@@ -1156,12 +1248,7 @@ const CourseDetailPage: React.FC = () => {
     }
   };
 
-  const handleDeleteQuiz = async (sectionId: number, quiz: QuizItem) => {
-    const confirmDelete = window.confirm(
-      `Hapus quiz "${quiz.title}" dari section ini?`
-    );
-    if (!confirmDelete) return;
-
+  const performDeleteQuiz = async (sectionId: number, quiz: QuizItem) => {
     try {
       await apiDelete(`/api/quizzes/${quiz.id}`);
       await loadQuizzesForSection(sectionId);
@@ -1170,8 +1257,20 @@ const CourseDetailPage: React.FC = () => {
         error,
         "Gagal menghapus quiz. Silakan coba lagi."
       );
-      window.alert(message);
+      setSectionContentErrorMessage(sectionId, message);
     }
+  };
+
+  const handleDeleteQuiz = (sectionId: number, quiz: QuizItem) => {
+    setConfirmConfig({
+      title: "Hapus quiz",
+      description: `Hapus quiz "${quiz.title}" dari section ini?`,
+      confirmLabel: "Ya, hapus",
+      cancelLabel: "Batal",
+      onConfirm: () => {
+        void performDeleteQuiz(sectionId, quiz);
+      },
+    });
   };
 
   // ---------------------------
@@ -1298,7 +1397,7 @@ const CourseDetailPage: React.FC = () => {
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
-                          void handleDeleteSection(section);
+                          handleDeleteSection(section);
                         }}
                         className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-3 py-1 text-[11px] text-red-700 hover:bg-red-100"
                       >
@@ -1397,7 +1496,7 @@ const CourseDetailPage: React.FC = () => {
                                         <button
                                           type="button"
                                           onClick={() =>
-                                            void handleDeleteMaterial(
+                                            handleDeleteMaterial(
                                               section.id,
                                               material
                                             )
@@ -1479,7 +1578,18 @@ const CourseDetailPage: React.FC = () => {
                                       </p>
                                     </div>
                                     <div className="flex flex-col items-end gap-1">
-                                      <div className="flex gap-1">
+                                      <div className="flex flex-wrap justify-end gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            router.push(
+                                              `/teacher/assignments/${assignment.id}`
+                                            )
+                                          }
+                                          className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] text-slate-700 hover:bg-slate-50"
+                                        >
+                                          Lihat submissions
+                                        </button>
                                         <button
                                           type="button"
                                           onClick={() =>
@@ -1495,7 +1605,7 @@ const CourseDetailPage: React.FC = () => {
                                         <button
                                           type="button"
                                           onClick={() =>
-                                            void handleDeleteAssignment(
+                                            handleDeleteAssignment(
                                               section.id,
                                               assignment
                                             )
@@ -1573,7 +1683,18 @@ const CourseDetailPage: React.FC = () => {
                                       </p>
                                     </div>
                                     <div className="flex flex-col items-end gap-1">
-                                      <div className="flex gap-1">
+                                      <div className="flex flex-wrap justify-end gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            router.push(
+                                              `/teacher/quizzes/${quiz.id}`
+                                            )
+                                          }
+                                          className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] text-slate-700 hover:bg-slate-50"
+                                        >
+                                          Lihat attempt
+                                        </button>
                                         <button
                                           type="button"
                                           onClick={() =>
@@ -1589,7 +1710,7 @@ const CourseDetailPage: React.FC = () => {
                                         <button
                                           type="button"
                                           onClick={() =>
-                                            void handleDeleteQuiz(
+                                            handleDeleteQuiz(
                                               section.id,
                                               quiz
                                             )
@@ -2708,6 +2829,21 @@ const CourseDetailPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* GLOBAL CONFIRM DIALOG */}
+      <ConfirmDialog
+        open={!!confirmConfig}
+        title={confirmConfig?.title ?? ""}
+        description={confirmConfig?.description ?? ""}
+        confirmLabel={confirmConfig?.confirmLabel}
+        cancelLabel={confirmConfig?.cancelLabel}
+        onCancel={() => setConfirmConfig(null)}
+        onConfirm={() => {
+          const fn = confirmConfig?.onConfirm;
+          setConfirmConfig(null);
+          if (fn) fn();
+        }}
+      />
     </>
   );
 };
